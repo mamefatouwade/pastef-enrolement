@@ -1836,13 +1836,38 @@ Si une information n'est pas mentionnée, laisse le champ vide.` }
     });
 
     const data = await response.json();
+    console.log('🔍 Gemini full response:', data);
+
+    // Si Gemini retourne une erreur HTTP
+    if (data.error) {
+      console.error('Gemini API error:', data.error);
+      document.getElementById('adminTranscription').value = `Erreur Gemini : ${data.error.message || JSON.stringify(data.error)}`;
+      btn.innerHTML = '❌ Erreur API — voir console';
+      btn.disabled = false;
+      return;
+    }
+
     const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    const clean = rawText.replace(/```json|```/g, '').trim();
+    console.log('🔍 Raw text from Gemini:', rawText);
+
+    if (!rawText) {
+      document.getElementById('adminTranscription').value = '⚠ Gemini n\'a rien renvoyé. Vérifiez la console et l\'audio.';
+      btn.innerHTML = '⚠ Réponse vide';
+      btn.disabled = false;
+      return;
+    }
+
+    // Extraction robuste du JSON
+    let clean = rawText.replace(/```json|```/g, '').trim();
+    const jsonMatch = clean.match(/\{[\s\S]*\}/);
+    if (jsonMatch) clean = jsonMatch[0];
 
     let parsed;
     try {
       parsed = JSON.parse(clean);
+      console.log('✓ Parsed JSON:', parsed);
     } catch(e) {
+      console.error('JSON parse error:', e);
       document.getElementById('adminTranscription').value = rawText;
       btn.innerHTML = '⚠ Transcription partielle — remplissez manuellement';
       btn.disabled = false;
